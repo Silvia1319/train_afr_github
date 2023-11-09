@@ -4,10 +4,11 @@ import config
 
 
 class CustomizedWaterbirdsDataset(WaterbirdsDataset):
+    first_stage_model = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cache = {}
-        self.first_stage_model = None
 
     def __getitem__(self, idx):
 

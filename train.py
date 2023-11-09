@@ -12,12 +12,12 @@ def train():
                                       input_size=config.input_size,
                                       batch_size=config.batch_size,
                                       num_workers=config.num_workers)
-    first_trainer = pl.Trainer(max_epochs=config.first_epoch, accelerator=config.accelerator)
+    first_trainer = pl.Trainer(max_epochs=config.first_epoch, accelerator=config.accelerator, devices=[0])
     first_trainer.fit(erm, datamodule)
 
     datamodule.change_to_2nd_stage(erm.model)
     afr = ModelAfr(erm.model)
-    second_trainer = pl.Trainer(max_epochs=config.second_epoch, accelerator=config.accelerator)
+    second_trainer = pl.Trainer(max_epochs=config.second_epoch, accelerator=config.accelerator, devices=[0])
     second_trainer.fit(afr, datamodule)
 
 

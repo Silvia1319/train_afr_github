@@ -32,8 +32,9 @@ class WaterBirdsDataModule(pl.LightningDataModule):
 
     def change_to_2nd_stage(self, model):
         self._stage = 2
-        self._model = model
-        self._dataset.first_stage_model = copy.deepcopy(model)
+        # self._model = model
+        WaterbirdsDataset.first_stage_model = copy.deepcopy(model)
+
     def prepare_data(self):
         self._dataset = WaterbirdsDataset(root_dir=self._root_dir, download=True)
 
