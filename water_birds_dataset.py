@@ -1,43 +1,44 @@
+import numpy as np
 from wilds.datasets.waterbirds_dataset import WaterbirdsDataset
-import torch
-import config
 
 
 class CustomizedWaterbirdsDataset(WaterbirdsDataset):
-    first_stage_model = None
+    weights = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self._make_reweigting_set()
+
         self.cache = {}
+
+    def _make_reweigting_set(self):
+        """
+        Creates a reweighting set from the training set for use in the CustomizedWaterbirdsDataset.
+
+        This method selects a subset of the training set and assigns it to a new reweighting split. To fully
+        understand the implementation, it's recommended to review the implementation of the WaterbirdsDataset class.
+
+        The method identifies training samples, randomly selects a specified proportion of them
+        (20% by default), and reassigns these selected indices to a new split category named 'train_rw'.
+        """
+        train_indices = np.where(self._split_array == self.split_dict['train'])[0]
+        num_to_change = int(len(train_indices) * 0.20)  # TODO 0.2 is a magic number, pass from configs
+
+        selected_indices = np.random.choice(train_indices, num_to_change, replace=False)
+        self._split_array[selected_indices] = 3
+        self._split_names = {'train': 'Train For ERM',
+                             'val': 'Validation',
+                             'test': 'Test',
+                             'train_rw': 'Train for reweighting'}
+        self._split_dict = {'train': 0, 'val': 1, 'test': 2, 'train_rw': 3}
 
     def __getitem__(self, idx):
 
         x, y, metadata = super().__getitem__(idx)
         x, y, c = x, y, metadata[0]
-        w = 1
-        if self.first_stage_model is None:
+        if self.weights is None or idx not in self.weights:
             return x, y, c
         else:
-            if idx in self.cache:
-                w = self.cache[idx]
-            else:
-                w = CustomizedWaterbirdsDataset.compute_afr_weights(x, y, config.gamma)
-                self.cache[idx] = w
-
-            return x, y, c, w
-
-    @staticmethod
-    def compute_afr_weights(erm_logits, class_label, gamma):
-        with torch.no_grad():
-            p = erm_logits.softmax(-1)
-        y_onehot = torch.zeros_like(erm_logits).scatter_(-1, class_label.unsqueeze(-1), 1)
-        p_true = (p * y_onehot).sum(-1)
-        weights = (-gamma * p_true).exp()
-        n_classes = torch.unique(class_label).numel()
-        class_count = []
-        for y in range(n_classes):
-            class_count.append((class_label == y).sum())
-        for y in range(0, n_classes):
-            weights[class_label == y] *= 1 / class_count[y]
-        weights /= weights.sum()
-        return weights
+            w = self.weights[idx]
+            return x, y, w

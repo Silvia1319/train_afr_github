@@ -6,7 +6,6 @@ import torchvision.models as models
 from torch import optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import config
-import torch.nn.functional as F
 
 
 class ModelErm(pl.LightningModule):
@@ -71,16 +70,17 @@ class ModelAfr(pl.LightningModule):
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
-        img, labels, _, weights = batch
+        img, labels, weights = batch
         preds = self.model(img)
         loss = self.loss_afr(preds, labels, weights, self.gamma, self.regularization, self.initial_param_last_layer)
         self.log('train_loss', loss, on_step=True, on_epoch=False, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        img, labels, backgrounds,weights = batch
+        img, labels, backgrounds = batch
+
         preds = self.model(img)
-        loss = self.loss_afr(preds, labels, weights,self.gamma, self.regularization, self.initial_param_last_layer)
+        loss = self.loss_afr(preds, labels, torch.ones_like(labels), self.gamma, self.regularization, self.initial_param_last_layer)
         preds = torch.argmax(preds, dim=1)
         for idx, (i, j) in enumerate(zip(labels, backgrounds)):
             if i == 0 and j == 0:
@@ -119,9 +119,9 @@ class ModelAfr(pl.LightningModule):
         self.val_accuracy = 0
 
     def test_step(self, batch, batch_idx):
-        img, labels, _,weights = batch
+        img, labels, backgrounds = batch
         preds = self.model(img)
-        loss = self.loss_afr(preds, labels,weights, self.gamma, self.regularization, self.initial_param_last_layer)
+        loss = self.loss_afr(preds, labels, torch.ones_like(labels), self.gamma, self.regularization, self.initial_param_last_layer)
         self.log('test_loss', loss)
         return loss
 

@@ -16,6 +16,7 @@ def train():
     first_trainer.fit(erm, datamodule)
 
     datamodule.change_to_2nd_stage(erm.model)
+
     afr = ModelAfr(erm.model)
     second_trainer = pl.Trainer(max_epochs=config.second_epoch, accelerator=config.accelerator, devices=[0])
     second_trainer.fit(afr, datamodule)

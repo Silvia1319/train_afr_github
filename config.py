@@ -9,4 +9,4 @@ regularization = 0.2
 input_size = 224
 root_dir = "data"
 accelerator = "gpu"
-num_workers = 1
+num_workers = 0
