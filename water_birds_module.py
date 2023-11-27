@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, random_split
 from wilds.common.data_loaders import get_eval_loader
 from torchvision.transforms import transforms
 from water_birds_dataset import CustomizedWaterbirdsDataset as WaterbirdsDataset
-
+import config
 
 class TrainingStage(Enum):
     ERM = 1
@@ -64,7 +64,7 @@ class WaterBirdsDataModule(pl.LightningDataModule):
         logits = torch.cat(logits)
         ys = torch.cat(ys)
 
-        weights = self.compute_afr_weights(logits, ys, 9) # TODO 9 is a magic number, pass from configs
+        weights = self.compute_afr_weights(logits, ys, config.gamma)
         WaterbirdsDataset.weights = {self._train_rw_data.indices[i]: weights[i] for i in
                                      range(len(self._train_rw_data))}
 

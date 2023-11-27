@@ -14,13 +14,16 @@ def train():
                                       num_workers=config.num_workers)
     first_trainer = pl.Trainer(max_epochs=config.first_epoch, accelerator=config.accelerator, devices=[0])
     first_trainer.fit(erm, datamodule)
-
+    torch.save(erm.state_dict(), 'erm_weights.pth')
+    first_trainer.test(erm, datamodule=datamodule)
     datamodule.change_to_2nd_stage(erm.model)
 
     afr = ModelAfr(erm.model)
     second_trainer = pl.Trainer(max_epochs=config.second_epoch, accelerator=config.accelerator, devices=[0])
     second_trainer.fit(afr, datamodule)
-
+    torch.save(afr.state_dict(), 'afr_weights.pth')
+    second_trainer.validate(afr, datamodule=datamodule)
+    second_trainer.test(afr, datamodule=datamodule)
 
 if __name__ == "__main__":
     train()

@@ -21,7 +21,7 @@ class ModelErm(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss = self.common_step(batch, batch_idx)
-        self.log('train_loss', loss)
+        self.log('train_loss',loss,on_step=False,on_epoch=True,prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -65,7 +65,7 @@ class ModelAfr(pl.LightningModule):
         self.worst_total = torch.tensor(0)
         self.worst_correct = torch.tensor(0)
         self.val_accuracy = 0
-
+        self.test_accuracy = 0
     def forward(self, x):
         return self.model(x)
 
@@ -82,6 +82,7 @@ class ModelAfr(pl.LightningModule):
         preds = self.model(img)
         loss = self.loss_afr(preds, labels, torch.ones_like(labels), self.gamma, self.regularization, self.initial_param_last_layer)
         preds = torch.argmax(preds, dim=1)
+        accuracy_2 = (preds == labels).float().mean()
         for idx, (i, j) in enumerate(zip(labels, backgrounds)):
             if i == 0 and j == 0:
                 self.totals[0] += 1
@@ -108,6 +109,7 @@ class ModelAfr(pl.LightningModule):
         self.val_accuracy = self.worst_correct.float() / self.worst_total.float() if self.worst_total.float() != 0 else torch.tensor(
             0)
         self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('val_accuracy', accuracy_2, on_step=False, on_epoch=True, prog_bar=True)
         return loss
 
     def on_validation_epoch_end(self):
@@ -115,16 +117,53 @@ class ModelAfr(pl.LightningModule):
         self.totals = torch.zeros(4)
         self.worst_total = torch.tensor(0)
         self.worst_correct = torch.tensor(0)
-        self.log('val_accuracy_epoch', torch.tensor(self.val_accuracy), on_epoch=True, prog_bar=True)
+        self.log('val_accuracy_WGA', torch.tensor(self.val_accuracy), on_epoch=True, prog_bar=True)
         self.val_accuracy = 0
 
     def test_step(self, batch, batch_idx):
+
         img, labels, backgrounds = batch
         preds = self.model(img)
         loss = self.loss_afr(preds, labels, torch.ones_like(labels), self.gamma, self.regularization, self.initial_param_last_layer)
-        self.log('test_loss', loss)
-        return loss
+        preds = torch.argmax(preds, dim=1)
+        accuracy_2 = (preds == labels).float().mean()
+        for idx, (i, j) in enumerate(zip(labels, backgrounds)):
+            if i == 0 and j == 0:
+                self.totals[0] += 1
+                if preds[idx] == i:
+                    self.corrects[0] += 1
+            elif i == 0 and j == 1:
+                self.totals[1] += 1
+                if preds[idx] == i:
+                    self.corrects[1] += 1
+            elif i == 1 and j == 0:
+                self.totals[2] += 1
+                if preds[idx] == i:
+                    self.corrects[2] += 1
+            else:
+                self.totals[3] += 1
+                if preds[idx] == i:
+                    self.corrects[3] += 1
 
+        result = [self.corrects[i] / self.totals[i] if self.totals[i] != 0 else 0 for i in range(len(self.totals))]
+        minn = min(result)
+        index = result.index(minn)
+        self.worst_total = self.totals[index]
+        self.worst_correct = self.corrects[index]
+        self.test_accuracy = self.worst_correct.float() / self.worst_total.float() if self.worst_total.float() != 0 else torch.tensor(
+            0)
+
+
+        self.log('test_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('test_accuracy', accuracy_2, on_step=False, on_epoch=True, prog_bar=True)
+        return loss
+    def on_test_epoch_end(self):
+        self.corrects = torch.zeros(4)
+        self.totals = torch.zeros(4)
+        self.worst_total = torch.tensor(0)
+        self.worst_correct = torch.tensor(0)
+        self.log('test_WGA_accuracy', torch.tensor(self.test_accuracy), on_epoch=True, prog_bar=True)
+        self.val_accuracy = 0
     def configure_optimizers(self):
         self.optimizer = optim.SGD(self.model.parameters(), lr=config.second_lr, weight_decay=config.weight_decay)
         scheduler = CosineAnnealingLR(self.optimizer, T_max=10)

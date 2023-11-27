@@ -1,6 +1,6 @@
 import numpy as np
 from wilds.datasets.waterbirds_dataset import WaterbirdsDataset
-
+import config
 
 class CustomizedWaterbirdsDataset(WaterbirdsDataset):
     weights = None
@@ -22,8 +22,13 @@ class CustomizedWaterbirdsDataset(WaterbirdsDataset):
         The method identifies training samples, randomly selects a specified proportion of them
         (20% by default), and reassigns these selected indices to a new split category named 'train_rw'.
         """
+        # validation_indices = np.where(self._split_array == self.split_dict['val'])[0]
+        # num_of_val = int(len(validation_indices)-len(self._split_array)*0.005)
+        # select_for_not_val = np.random.choice(validation_indices, num_of_val, replace=False)
+        # self._split_array[select_for_not_val] = 0
+
         train_indices = np.where(self._split_array == self.split_dict['train'])[0]
-        num_to_change = int(len(train_indices) * 0.20)  # TODO 0.2 is a magic number, pass from configs
+        num_to_change = int(len(train_indices) * config.rw_ratio)  # TODO 0.2 is a magic number, pass from configs
 
         selected_indices = np.random.choice(train_indices, num_to_change, replace=False)
         self._split_array[selected_indices] = 3
